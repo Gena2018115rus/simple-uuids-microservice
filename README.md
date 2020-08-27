@@ -18,3 +18,6 @@ Microservice is simple https service on node.js
 <p>Worker will be created for every client.</p>
 
 <p>For shutdown you can type <code>^C</code> OR <code>docker stop</code>.</p>
+
+<p><strong>Connect:</strong></p>
+<pre>https://localhost/v5?value=asd</pre>
