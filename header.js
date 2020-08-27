@@ -9,9 +9,5 @@ exports.LOG_PATH = LOG_PATH;
 exports.log = function (str) {
   str = `${new Date().toISOString()} - ${str}`;
   console.log(str);
-  fs.writeFile(LOG_PATH, str + '\n', { flag: 'a' }, (err) => {
-    if (err) {
-      console.log('Error when attempted write to log file!\n');
-    }
-  });
+  fs.writeFileSync(LOG_PATH, str + '\n', { flag: 'a' });
 }
