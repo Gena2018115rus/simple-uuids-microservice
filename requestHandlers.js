@@ -1,42 +1,26 @@
+"use strict";
+
 const { expose } = require('/usr/local/lib/node_modules/threads/worker');
 const url = require('url');
-const fs = require('fs');
-const { v3: uuidv3, v4: uuidv4, v5: uuidv5, validate: validateUuid } = require('/usr/local/lib/node_modules/uuid');
+const { v3: uuidv3, v5: uuidv5, validate: validateUuid } = require('/usr/local/lib/node_modules/uuid');
+const { log } = require('./header');
 
-// function f(countersBuf) {
-//   try {
-//     view = new BigUint64Array(countersBuf);
-//     Atomics.add(view, 1, 1n);
-//     console.log(`Hi! I\'m worker!\n`);
-//   } catch (err) {
-//     console.log(err);
-//   }
-// }
+const BASE_UUID = process.env.BASE_UUID || (() => { throw log('!!! BASE_UUID not defined !!!') })();
+let counters; // [0] = v3, [1] = v5, [2] = http503, [3] = http404
 
-const BASE_UUID = process.env.BASE_UUID || (() => { throw 'BASE_UUID not defined' })();
-const LOG_PATH = (process.env.LOG_PATH || (() => { throw 'LOG_PATH not defined' })()) + '_' + new Date().toISOString(); // вести лог в каталоге хоста
-var counters; // [0] = v3, [1] = v5, [2] = http503, [3] = http404
-function log(str) {
-  str = `${new Date().toISOString()} - ${str}`;
-  console.log(str);
-  fs.writeFile(LOG_PATH, str + '\n', { flag: 'a' }, (err) => {
-    if (err) {
-      console.log('Error when attempted write to log file!\n');
-    }
-  });
+function v3Handler(value) {
+  let tmp = uuidv3(value, BASE_UUID); // can throw
+  Atomics.add(counters, 0, 1n);
+  return tmp;
 }
 
-function v3_handler(value) {
-  Atomics.add(counters, 0, 1n); // не увеличивать при ошибке
-  return uuidv3(value, BASE_UUID);
-}
-
-function v5_handler(value) {
+function v5Handler(value) {
+  let tmp = uuidv5(value, BASE_UUID) // can throw
   Atomics.add(counters, 1, 1n);
-  return uuidv5(value, BASE_UUID);
+  return tmp;
 }
 
-function health_handler() {
+function healthHandler() {
   if (validateUuid(BASE_UUID)) {
     return 'OK';
   } else {
@@ -44,56 +28,43 @@ function health_handler() {
   }
 }
 
-function metrics_handler() {
+function metricsHandler() {
   return `uuidv3_requests{count="${Atomics.load(counters, 0)}"}\nuuidv5_requests{count="${Atomics.load(counters, 1)}"}\nhttp503_responses{count="${Atomics.load(counters, 2)}"}\nhttp404_responses{count="${Atomics.load(counters, 3)}"}\n`;
 }
 
-// function sendResponse(code, res, headers, data) {
-//   switch (code) {
-//     case 404:
-//       Atomics.add(counters, 3, 1n);
-//       break;
-//     case 503:
-//       Atomics.add(counters, 2, 1n);
-//   }
-//   res.writeHead(code, headers);
-//   res.end(data);
-// }
+function http404Handler() {
+  Atomics.add(counters, 3, 1n);
+  return 'http 404';
+}
+
+function http503Handler() {
+  Atomics.add(counters, 2, 1n);
+  return 'http 503';
+}
 
 function chooseRequestHandler(reqUrl, countersBuf) {
   counters = new BigUint64Array(countersBuf);
   log(`Request to ${reqUrl}`);
-  parsedUrl = url.parse(reqUrl, true);
-  value = parsedUrl.query.value || '';
+  let parsedUrl = url.parse(reqUrl, true);
+  let value = parsedUrl.query.value || '';
 
   try {
     switch (parsedUrl.pathname) {
       case '/v3':
-        return {code: 200, data: v3_handler(value)};
-        // sendResponse(200, res, headers, v3_handler(value))
-        // break;
+        return { code: 200, data: v3Handler(value) };
       case '/v5':
-        return {code: 200, data: v5_handler(value)};
-        // sendResponse(200, res, headers, v5_handler(value))
-        // break;
+        return { code: 200, data: v5Handler(value) };
       case '/health':
-        return {code: 200, data: health_handler()};
-        // sendResponse(200, res, headers, health_handler());
-        // break;
+        return { code: 200, data: healthHandler() };
       case '/metrics':
-        return {code: 200, data: metrics_handler()};
-        // sendResponse(200, res, headers, metrics_handler());
-        // break;
+        return { code: 200, data: metricsHandler() };
       default:
-        Atomics.add(counters, 3, 1n); // TODO: http404_handler which inc 404counter
-        return {code: 404, data: 'http 404'};
-        // sendResponse(404, res, headers, 'http 404');
+        log(`${reqUrl} - 404`);
+        return { code: 404, data: http404Handler() };
     }
   } catch (err) {
-    log(err); // логировать все исключения
-    Atomics.add(counters, 2, 1n); // TODO: http503_handler which inc 503counter
-    return {code: 503, data: 'http 503'};
-    // sendResponse(503, res, headers, 'http 503');
+    log(err);
+    return { code: 503, data: http503Handler() };
   }
 }
 
