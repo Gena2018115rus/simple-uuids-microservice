@@ -1,10 +1,12 @@
 "use strict";
 
+process.env.g_LOG_PATH = (process.env.LOG_PATH || (() => { throw console.log('!!! LOG_PATH not defined !!!') })()) + '_' + new Date().toISOString();
+
 const https = require('https');
 const fs = require('fs');
 const { v4: uuidv4 } = require('/usr/local/lib/node_modules/uuid');
 const { spawn, Thread, Worker } = require('/usr/local/lib/node_modules/threads');
-const { LOG_PATH, log } = require('./header');
+const { log } = require('./header');
 
 const PORT = 443;
 let countersBuf = new SharedArrayBuffer(4 * 8); // 4 x BigUint64Array
@@ -15,7 +17,7 @@ countersView[1] = BigInt(counters[1]);
 countersView[2] = BigInt(counters[2]);
 countersView[3] = BigInt(counters[3]);
 
-log(`Log file is ${LOG_PATH}`);
+log(`Log file is ${process.env.g_LOG_PATH}`);
 log(`CountersView contains ${countersView[0]} ${countersView[1]} ${countersView[2]} ${countersView[3]}`);
 
 const options = {
