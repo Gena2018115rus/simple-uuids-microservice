@@ -1,0 +1,23 @@
+
+
+
+Simple UUIDs Microservice
+Microservice is simple https service on node.js
+
+Microservice awaits GET request to /v3 and responds with UUIDv3 that based on value in request and BASE_UUID environment variable
+Microservice awaits GET request to /v5 and responds with UUIDv5 that based on value in request and BASE_UUID environment variable
+Microservice healthcheck: GET request to /health returns 200 if service is OK and 503 if not.
+Microservice metric: GET request to /metrics returns netx metrics in Prometheus format:
+- number of generated UUIDs for v3
+- number of generated UUIDs for v5
+- number of 503 responses
+- number of requests to unsupported URIs (404 responses)
+Logging must be implemented into log-file, name is created as LOG_PATH environment variable + timestamp
+Addon: session stickiness should be implemented: sessionid cookie should be used to make client use same instance for every request. 
+
+
+Results:
+1. microservice must be in docker container
+2. sources + dockerfile for microservice - on Github 
+3. kubernetes YAML file that contains Deployment of Simple UUIDs Microservice (optional)
+
