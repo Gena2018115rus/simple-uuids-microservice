@@ -7,7 +7,7 @@ Microservice is simple https service on node.js
 <p><strong>Logs:</strong></p>
 <p>With <code>-v</code> flag you can mount host dir into container. If you set <code>LOG_PATH=/container/path/log_file_name_prefix</code>, you can save logs directly to host.</p><pre>docker run -v /host/path:/container/path</pre>
 
-<p><strong>How get http 503:</strong></p>
+<p><strong>How to get http 503:</strong></p>
 <p>If <code>BASE_UUID</code> is not valid, server will response <code>503</code> on <code>/health</code>, <code>/v3</code> and <code>/v5</code>.</p>
 
 <p><strong>Details:</strong></p>
